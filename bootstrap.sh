@@ -12,7 +12,7 @@
 #       - mnemosyne  pipx 安装 PyPI 包 mnemosyne-memory[EXTRAS]
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>/.trae/mcp.json（解析本机二进制绝对路径）
-#    4. AOCI 工作区初始化：init（缺骨架时）+ scan（缺基线时）
+#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init（追加 aoci 区块）+ scan（缺基线时）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  选项：
@@ -285,12 +285,19 @@ else
 fi
 [[ -n "$NEW_MCP" ]] && rm -f "$NEW_MCP"
 
-# ── 4. AOCI 工作区初始化 ──────────────────────────────────────
-step "4/5 AOCI 初始化（init + scan）"
+# ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
+step "4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）"
+
+if [[ ! -f "$WORKSPACE/AGENTS.md" ]]; then
+  cp "$TOOLKIT_DIR/AGENTS.MD.TEMPLATE" "$WORKSPACE/AGENTS.md"
+  ok "已从模板部署 AGENTS.md（工作流 + MCP 工具约束）"
+else
+  info "AGENTS.md 已存在，不覆盖"
+fi
 
 if [[ ! -f "$WORKSPACE/aoci.txt" ]]; then
   "$AOCI_BIN" --repo "$WORKSPACE" init --locale zh-CN
-  ok "aoci init 完成（AGENTS.md 缺失时会一并生成，已存在则不覆盖）"
+  ok "aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份，原有内容不动）"
 else
   ok "aoci.txt 已存在，跳过 init（不覆盖既有正式认知）"
 fi
@@ -317,7 +324,8 @@ echo "  代码图谱   : $WORKSPACE/.codegraph/ 及各子仓库"
 echo ""
 echo "后续步骤:"
 echo "  1. 在 Trae 中重新打开/Reload 该工作区，使 .trae/mcp.json 生效"
-echo "  2. Windows 同事请使用 bootstrap.ps1（本脚本仅覆盖 macOS/Linux）"
+echo "  2. Agent 会话开始时先调 aoci_rules 建立本工程认知契约，再按需 aoci_overview 建立全局认知（见 AGENTS.md 的 aoci 区块）"
+echo "  3. Windows 同事请使用 bootstrap.ps1（本脚本仅覆盖 macOS/Linux）"
 if [[ ":$PATH:" != *":$HOME/bin:"* || ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-  echo "  3. 建议把 ~/bin 与 ~/.local/bin 加入 PATH（仅影响终端直呼 aoci/mnemosyne）"
+  echo "  4. 建议把 ~/bin 与 ~/.local/bin 加入 PATH（仅影响终端直呼 aoci/mnemosyne）"
 fi
