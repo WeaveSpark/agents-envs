@@ -18,7 +18,7 @@ git clone <本仓库地址> .agents-envs
 powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 ```
 
-完成后在 Trae 中重新打开（或 Reload）该工作区，`.trae/mcp.json` 即生效。Agent 会话开始时先调 `aoci_rules` 建立本工程认知契约，再按需 `aoci_overview` 建立全局认知（见 `AGENTS.md` 的 aoci 区块）。
+完成后在 Trae 中重新打开（或 Reload）该工作区，`.trae/mcp.json` 即生效。Agent 会话开始时先调 `aoci_rules` 建立本工程认知契约，再按需 `aoci_overview` 建立全局认知（见 `AGENTS.md` 尾部精简指引与 `AOCI.md`）。
 
 > 脚本默认作用于**工具包目录的父目录**（即你的工作区根）。也可以显式指定：
 > `bootstrap.sh --workspace <路径>` / `bootstrap.ps1 -Workspace <路径>`。
@@ -32,7 +32,7 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
    - `mnemosyne`：pipx 安装 PyPI 包 `mnemosyne-memory[all]`（pypi.org 不可达时自动回退阿里云/腾讯镜像）；
    - `codegraph`：npm 包 `@colbymchenry/codegraph`，无需预装，npx 按需拉起（脚本仅预热缓存）；
 3. **生成 `<工作区>/.trae/mcp.json`**：读取 [trae_mcp_config.json](trae_mcp_config.json) 模板，把 `__MNEMOSYNE_BIN__` / `__AOCI_BIN__` 占位符替换为本机二进制绝对路径（已有 mcp.json 时先备份为 `mcp.json.bak.<时间戳>`）；
-4. **AGENTS.md + AOCI 工作区初始化**：先从 [AGENTS.MD.TEMPLATE](AGENTS.MD.TEMPLATE) 部署工作区级 `AGENTS.md`（缺失时），再 `aoci init`（缺 `aoci.txt` 骨架时；向 AGENTS.md 追加 aoci 区块并自动备份，原内容不动）+ `aoci scan`（缺基线时）；
+4. **AGENTS.md + AOCI 工作区初始化**：先从 [AGENTS.MD.TEMPLATE](AGENTS.MD.TEMPLATE) 部署工作区级 `AGENTS.md`（缺失时），再 `aoci init`（缺 `aoci.txt` 骨架时）+ `aoci scan`（缺基线时）。init 追加的 aoci 运行时合同区块（百行级）自动收拢到独立 `AOCI.md`，主 `AGENTS.md` 仅留精简指引（会话合同由 `aoci_rules` 实时签发，静态文档本不作合同）；
 5. **codegraph 索引**：工作区根必建（MCP server 的 cwd 在根，无索引进静默态），另为各含 `.git` 的子仓库建图（排除 `node_modules` 与工具包自身）。
 
 ## 搭建产物（出现在你的工作区）
@@ -41,7 +41,8 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 | --- | --- |
 | `.trae/mcp.json` | 三个 MCP 服务的注册配置（IDE 变量 `${workspaceFolder}` 等由 Trae 运行时解析） |
 | `aoci.txt` + `.aoci/` | AOCI 仓库认知索引与字节级基线（基线跨平台要求 LF，见 `.gitattributes`） |
-| `AGENTS.md` | 工作区级 Agent 约束：模板部署的工作流与 MCP 工具约束 + AOCI init 追加的 aoci 区块（已存在则一律不覆盖） |
+| `AGENTS.md` | 工作区级 Agent 约束：模板部署的工作流与 MCP 工具约束 + 尾部 AOCI 精简指引（已存在则一律不覆盖） |
+| `AOCI.md` | aoci init 追加的运行时合同区块存档（收拢自 AGENTS.md，可提交版本化；会话合同以 `aoci_rules` 实时签发为准） |
 | `.codegraph/` | 代码图谱数据库（自带 gitignore，建议整体提交或忽略均可） |
 | `.mnemosyne/` | 记忆库数据目录（mnemosyne 服务首次运行时创建，bank 名 = 工作区目录名） |
 
@@ -52,7 +53,7 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 | `bootstrap.sh` | 一键搭建主入口（macOS / Linux） |
 | `bootstrap.ps1` | 一键搭建主入口（Windows，与 sh 版逻辑对齐；**未在真实 Windows 实测**） |
 | `trae_mcp_config.json` | mcp.json 模板（占位符版本，勿直接当配置用） |
-| `aoci.sh` | 单独执行 AOCI init / scan（bootstrap 已内置，供手动补跑） |
+| `aoci.sh` | 单独执行 AOCI init / scan + aoci 区块收拢（bootstrap 已内置，供手动补跑） |
 | `code-graph.sh` | 单独执行 codegraph 索引（同上） |
 | `AGENTS.MD.TEMPLATE` | 工作区 AGENTS.md 通用模板（工作流分级 + 三类 MCP 工具约束；bootstrap 在工作区缺失时部署，AOCI init 再向其追加 aoci 区块） |
 | `.gitattributes` | `* text=auto eol=lf`，保证 AOCI 字节级基线跨平台一致 |
@@ -70,7 +71,7 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 ## 常见问题
 
 - **pypi.org 连不上**：脚本内置阿里云 / 腾讯镜像回退链，通常无需干预；也可显式 `PIP_INDEX_URL=<你的镜像>` 后重跑。
-- **重跑会怎样**：所有步骤幂等——工具已装则跳过、mcp.json 内容一致则不写、`AGENTS.md` 已存在则不覆盖、`aoci.txt`/基线已存在则跳过 init/scan、`.codegraph` 已存在则跳过该仓库。
+- **重跑会怎样**：所有步骤幂等——工具已装则跳过、mcp.json 内容一致则不写、`AGENTS.md` 已存在则不覆盖、aoci 区块已收拢则不再处理、`aoci.txt`/基线已存在则跳过 init/scan、`.codegraph` 已存在则跳过该仓库。
 - **重建 AOCI 基线**：`aoci --repo <工作区> scan --force`。
 - **PATH 警告**：`~/bin`、`~/.local/bin` 不在 PATH 只影响终端直呼 `aoci` / `mnemosyne`，MCP 配置写的是绝对路径，不受影响。
 - **已有 `.trae/mcp.json`**：覆盖前自动备份为 `mcp.json.bak.<时间戳>`。

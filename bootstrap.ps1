@@ -14,7 +14,8 @@
 #       - mnemosyne  pipx 安装 PyPI 包 mnemosyne-memory[EXTRAS]
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>\.trae\mcp.json（解析本机二进制绝对路径）
-#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init（追加 aoci 区块）+ scan（缺基线时）
+#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init + scan（缺基线时）；
+#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  选项：
@@ -340,9 +341,46 @@ if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'AGENTS.md'))) {
 if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'aoci.txt'))) {
     & $AociBin --repo $Workspace init --locale zh-CN
     if ($LASTEXITCODE -ne 0) { Err 'aoci init 失败'; exit 1 }
-    Ok 'aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份，原有内容不动）'
+    Ok 'aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份）'
 } else {
     Ok 'aoci.txt 已存在，跳过 init（不覆盖既有正式认知）'
+}
+
+# aoci init 追加的运行时合同区块过重（百行级），收拢到独立 AOCI.md 存档；
+# 主 AGENTS.md 只留精简指引——会话合同由 aoci_rules 实时签发，静态文档本不作合同
+$AgentsMd = Join-Path $Workspace 'AGENTS.md'
+if ((Test-Path -LiteralPath $AgentsMd) -and
+    (Select-String -LiteralPath $AgentsMd -Pattern '<!-- aoci:begin -->' -Quiet)) {
+    $lines = [IO.File]::ReadAllLines($AgentsMd)
+    $beginIdx = -1; $endIdx = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($beginIdx -lt 0 -and $lines[$i] -match '<!-- aoci:begin -->') { $beginIdx = $i }
+        elseif ($beginIdx -ge 0 -and $lines[$i] -match '<!-- aoci:end -->') { $endIdx = $i; break }
+    }
+    if ($beginIdx -ge 0 -and $endIdx -gt $beginIdx) {
+        # 区块整段存档到 AOCI.md（显式 LF，与 .gitattributes eol=lf 保持一致）
+        $block = $lines[$beginIdx..$endIdx]
+        [IO.File]::WriteAllText((Join-Path $Workspace 'AOCI.md'), ($block -join "`n") + "`n")
+
+        # AGENTS.md 去区块、去尾部空行，追加精简指引
+        $keep = @()
+        if ($beginIdx -gt 0) { $keep += $lines[0..($beginIdx - 1)] }
+        if ($endIdx -lt $lines.Count - 1) { $keep += $lines[($endIdx + 1)..($lines.Count - 1)] }
+        while ($keep.Count -gt 0 -and "$($keep[-1])" -match '^\s*$') {
+            if ($keep.Count -gt 1) { $keep = $keep[0..($keep.Count - 2)] } else { $keep = @() }
+        }
+        $keep += @(
+            ''
+            '## AOCI 仓库认知（精简指引）'
+            ''
+            'AOCI 为本仓库维护可版本化的认知层（`aoci.txt`）。完整运行规则存档于 [AOCI.md](AOCI.md)；会话合同以 `aoci_rules` 实时签发为准，静态文档不作为合同。'
+            ''
+            '- 会话开始：先 `aoci_rules` 建立认知契约，需要全局认知时再 `aoci_overview`。'
+            '- 任务收尾：受管理对象达到最终稳定状态后调用一次 `aoci_maintain`，按返回候选经 `aoci_update_entry` 提交；证据不足用 `aoci_report`，不猜写。'
+        )
+        [IO.File]::WriteAllText($AgentsMd, ($keep -join "`n") + "`n")
+        Ok 'aoci 区块已收拢至 AOCI.md（主 AGENTS.md 仅留精简指引）'
+    }
 }
 
 if (Test-Path -LiteralPath (Join-Path $Workspace '.aoci\baseline.json')) {
@@ -397,7 +435,7 @@ Write-Host "  代码图谱   : $(Join-Path $Workspace '.codegraph\') 及各子�
 Write-Host ''
 Write-Host '后续步骤:'
 Write-Host '  1. 在 Trae 中重新打开/Reload 该工作区，使 .trae\mcp.json 生效'
-Write-Host '  2. Agent 会话开始时先调 aoci_rules 建立本工程认知契约，再按需 aoci_overview 建立全局认知（见 AGENTS.md 的 aoci 区块）'
+Write-Host '  2. Agent 会话开始时先调 aoci_rules 建立本工程认知契约，再按需 aoci_overview 建立全局认知（见 AGENTS.md 尾部精简指引与 AOCI.md）'
 Write-Host '  3. macOS/Linux 同事请使用 bootstrap.sh（本脚本仅覆盖 Windows）'
 $needPathTip = ($env:PATH -notlike "*$(Join-Path $HOME 'bin')*") -or
                ($env:PATH -notlike "*$(Join-Path $HOME '.local\bin')*")

@@ -12,7 +12,8 @@
 #       - mnemosyne  pipx 安装 PyPI 包 mnemosyne-memory[EXTRAS]
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>/.trae/mcp.json（解析本机二进制绝对路径）
-#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init（追加 aoci 区块）+ scan（缺基线时）
+#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init + scan（缺基线时）；
+#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  选项：
@@ -297,9 +298,29 @@ fi
 
 if [[ ! -f "$WORKSPACE/aoci.txt" ]]; then
   "$AOCI_BIN" --repo "$WORKSPACE" init --locale zh-CN
-  ok "aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份，原有内容不动）"
+  ok "aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份）"
 else
   ok "aoci.txt 已存在，跳过 init（不覆盖既有正式认知）"
+fi
+
+# aoci init 追加的运行时合同区块过重（百行级），收拢到独立 AOCI.md 存档；
+# 主 AGENTS.md 只留精简指引——会话合同由 aoci_rules 实时签发，静态文档本不作合同
+if [[ -f "$WORKSPACE/AGENTS.md" ]] && grep -q '<!-- aoci:begin -->' "$WORKSPACE/AGENTS.md"; then
+  awk '/<!-- aoci:begin -->/{f=1} f{print} /<!-- aoci:end -->/{f=0}' \
+    "$WORKSPACE/AGENTS.md" > "$WORKSPACE/AOCI.md"
+  awk '/<!-- aoci:begin -->/{f=1} !f{buf=buf $0 "\n"} /<!-- aoci:end -->/{f=0} END{sub(/\n+$/,"\n",buf); printf "%s",buf}' \
+    "$WORKSPACE/AGENTS.md" > "$WORKSPACE/AGENTS.md.tmp"
+  cat >> "$WORKSPACE/AGENTS.md.tmp" <<'EOF'
+
+## AOCI 仓库认知（精简指引）
+
+AOCI 为本仓库维护可版本化的认知层（`aoci.txt`）。完整运行规则存档于 [AOCI.md](AOCI.md)；会话合同以 `aoci_rules` 实时签发为准，静态文档不作为合同。
+
+- 会话开始：先 `aoci_rules` 建立认知契约，需要全局认知时再 `aoci_overview`。
+- 任务收尾：受管理对象达到最终稳定状态后调用一次 `aoci_maintain`，按返回候选经 `aoci_update_entry` 提交；证据不足用 `aoci_report`，不猜写。
+EOF
+  mv "$WORKSPACE/AGENTS.md.tmp" "$WORKSPACE/AGENTS.md"
+  ok "aoci 区块已收拢至 AOCI.md（主 AGENTS.md 仅留精简指引）"
 fi
 
 if [[ -f "$WORKSPACE/.aoci/baseline.json" ]]; then
@@ -324,7 +345,7 @@ echo "  代码图谱   : $WORKSPACE/.codegraph/ 及各子仓库"
 echo ""
 echo "后续步骤:"
 echo "  1. 在 Trae 中重新打开/Reload 该工作区，使 .trae/mcp.json 生效"
-echo "  2. Agent 会话开始时先调 aoci_rules 建立本工程认知契约，再按需 aoci_overview 建立全局认知（见 AGENTS.md 的 aoci 区块）"
+echo "  2. Agent 会话开始时先调 aoci_rules 建立本工程认知契约，再按需 aoci_overview 建立全局认知（见 AGENTS.md 尾部精简指引与 AOCI.md）"
 echo "  3. Windows 同事请使用 bootstrap.ps1（本脚本仅覆盖 macOS/Linux）"
 if [[ ":$PATH:" != *":$HOME/bin:"* || ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
   echo "  4. 建议把 ~/bin 与 ~/.local/bin 加入 PATH（仅影响终端直呼 aoci/mnemosyne）"
