@@ -43,7 +43,7 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 | `aoci.txt` + `.aoci/` | AOCI 仓库认知索引与字节级基线（基线跨平台要求 LF，见 `.gitattributes`） |
 | `AGENTS.md` | 工作区级 Agent 约束：模板部署的工作流与 MCP 工具约束 + 尾部 AOCI 精简指引（已存在则一律不覆盖） |
 | `AOCI.md` | aoci init 追加的运行时合同区块存档（收拢自 AGENTS.md，可提交版本化；会话合同以 `aoci_rules` 实时签发为准） |
-| `.gitignore` | OS 杂项（`.DS_Store`/`Thumbs.db`）+ AOCI 正式资产白名单（`aoci.txt` 等 3 个）+ 工具数据目录（`.codegraph/`、`.mnemosyne/`、`.trae/mcp.json`）忽略 |
+| `.gitignore` | OS 杂项（`.DS_Store`/`Thumbs.db`）+ AOCI 正式资产白名单（`aoci.txt` 等 3 个）+ 工具数据目录（`.codegraph/`、`.mnemosyne/`、`.trae/mcp.json`、`.aoci/`）忽略 |
 | `.codegraph/` | 代码图谱数据库（自带 gitignore，建议整体提交或忽略均可） |
 | `.mnemosyne/` | 记忆库数据目录（mnemosyne 服务首次运行时创建，bank 名 = 工作区目录名） |
 

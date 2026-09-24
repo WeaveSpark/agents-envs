@@ -388,11 +388,11 @@ if ((Test-Path -LiteralPath $AgentsMd) -and
 # 放在 scan 之前写入，保证基线扫描时文件集完整。幂等：已有则只追加缺失规则
 $Gitignore = Join-Path $Workspace '.gitignore'
 $GiRules = @('.DS_Store', 'Thumbs.db', '!aoci.txt', '!aoci.code.txt', '!aoci.meta.txt',
-             '.codegraph/', '.mnemosyne/', '.trae/mcp.json')
+             '.codegraph/', '.mnemosyne/', '.trae/mcp.json', '.aoci/')
 if (-not (Test-Path -LiteralPath $Gitignore)) {
     $GiFull = @('# OS specific files', '.DS_Store', 'Thumbs.db', '',
                 '!aoci.txt', '!aoci.code.txt', '!aoci.meta.txt', '',
-                '.codegraph/', '.mnemosyne/', '.trae/mcp.json')
+                '.codegraph/', '.mnemosyne/', '.trae/mcp.json', '.aoci/')
     # 显式 LF，与 .gitattributes eol=lf 保持一致
     [IO.File]::WriteAllText($Gitignore, ($GiFull -join "`n") + "`n")
     Ok '已生成 .gitignore（OS 杂项 + aoci 白名单 + 工具数据目录）'

@@ -327,7 +327,7 @@ fi
 # 工作区 .gitignore：OS 杂项 + AOCI 正式资产白名单 + 工具数据目录；
 # 放在 scan 之前写入，保证基线扫描时文件集完整。幂等：已有则只追加缺失规则
 GITIGNORE="$WORKSPACE/.gitignore"
-GI_RULES=('.DS_Store' 'Thumbs.db' '!aoci.txt' '!aoci.code.txt' '!aoci.meta.txt' '.codegraph/' '.mnemosyne/' '.trae/mcp.json')
+GI_RULES=('.DS_Store' 'Thumbs.db' '!aoci.txt' '!aoci.code.txt' '!aoci.meta.txt' '.codegraph/' '.mnemosyne/' '.trae/mcp.json' '.aoci/')
 if [[ ! -f "$GITIGNORE" ]]; then
   printf '%s\n' \
     '# OS specific files' \
@@ -340,7 +340,8 @@ if [[ ! -f "$GITIGNORE" ]]; then
     '' \
     '.codegraph/' \
     '.mnemosyne/' \
-    '.trae/mcp.json' > "$GITIGNORE"
+    '.trae/mcp.json' \
+    '.aoci/' > "$GITIGNORE"
   ok "已生成 .gitignore（OS 杂项 + aoci 白名单 + 工具数据目录）"
 else
   gi_missing=()
