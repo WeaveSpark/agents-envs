@@ -15,7 +15,8 @@
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>\.trae\mcp.json（解析本机二进制绝对路径）
 #    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init + scan（缺基线时）；
-#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引
+#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引；
+#       生成/补齐工作区 .gitignore（幂等：已有则只追加缺失规则）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  选项：
@@ -380,6 +381,33 @@ if ((Test-Path -LiteralPath $AgentsMd) -and
         )
         [IO.File]::WriteAllText($AgentsMd, ($keep -join "`n") + "`n")
         Ok 'aoci 区块已收拢至 AOCI.md（主 AGENTS.md 仅留精简指引）'
+    }
+}
+
+# 工作区 .gitignore：OS 杂项 + AOCI 正式资产白名单 + 工具数据目录；
+# 放在 scan 之前写入，保证基线扫描时文件集完整。幂等：已有则只追加缺失规则
+$Gitignore = Join-Path $Workspace '.gitignore'
+$GiRules = @('.DS_Store', 'Thumbs.db', '!aoci.txt', '!aoci.code.txt', '!aoci.meta.txt',
+             '.codegraph/', '.mnemosyne/', '.trae/mcp.json')
+if (-not (Test-Path -LiteralPath $Gitignore)) {
+    $GiFull = @('# OS specific files', '.DS_Store', 'Thumbs.db', '',
+                '!aoci.txt', '!aoci.code.txt', '!aoci.meta.txt', '',
+                '.codegraph/', '.mnemosyne/', '.trae/mcp.json')
+    # 显式 LF，与 .gitattributes eol=lf 保持一致
+    [IO.File]::WriteAllText($Gitignore, ($GiFull -join "`n") + "`n")
+    Ok '已生成 .gitignore（OS 杂项 + aoci 白名单 + 工具数据目录）'
+} else {
+    $existing = [IO.File]::ReadAllLines($Gitignore)
+    $giMissing = @($GiRules | Where-Object { $existing -notcontains $_ })
+    if ($giMissing.Count -eq 0) {
+        Ok '.gitignore 已含全部所需规则，跳过'
+    } else {
+        $base = ([IO.File]::ReadAllText($Gitignore)).TrimEnd("`r", "`n")
+        # 保持原文件行尾风格（含 CRLF 则用 CRLF 追加）
+        $nl = if ($base -match "`r`n") { "`r`n" } else { "`n" }
+        $new = $base + $nl + $nl + ($giMissing -join $nl) + $nl
+        [IO.File]::WriteAllText($Gitignore, $new)
+        Ok "已向 .gitignore 追加 $($giMissing.Count) 条缺失规则: $($giMissing -join ', ')"
     }
 }
 

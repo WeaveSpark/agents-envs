@@ -13,7 +13,8 @@
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>/.trae/mcp.json（解析本机二进制绝对路径）
 #    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init + scan（缺基线时）；
-#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引
+#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引；
+#       生成/补齐工作区 .gitignore（幂等：已有则只追加缺失规则）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  选项：
@@ -321,6 +322,38 @@ AOCI 为本仓库维护可版本化的认知层（`aoci.txt`）。完整运行�
 EOF
   mv "$WORKSPACE/AGENTS.md.tmp" "$WORKSPACE/AGENTS.md"
   ok "aoci 区块已收拢至 AOCI.md（主 AGENTS.md 仅留精简指引）"
+fi
+
+# 工作区 .gitignore：OS 杂项 + AOCI 正式资产白名单 + 工具数据目录；
+# 放在 scan 之前写入，保证基线扫描时文件集完整。幂等：已有则只追加缺失规则
+GITIGNORE="$WORKSPACE/.gitignore"
+GI_RULES=('.DS_Store' 'Thumbs.db' '!aoci.txt' '!aoci.code.txt' '!aoci.meta.txt' '.codegraph/' '.mnemosyne/' '.trae/mcp.json')
+if [[ ! -f "$GITIGNORE" ]]; then
+  printf '%s\n' \
+    '# OS specific files' \
+    '.DS_Store' \
+    'Thumbs.db' \
+    '' \
+    '!aoci.txt' \
+    '!aoci.code.txt' \
+    '!aoci.meta.txt' \
+    '' \
+    '.codegraph/' \
+    '.mnemosyne/' \
+    '.trae/mcp.json' > "$GITIGNORE"
+  ok "已生成 .gitignore（OS 杂项 + aoci 白名单 + 工具数据目录）"
+else
+  gi_missing=()
+  for r in "${GI_RULES[@]}"; do
+    grep -qxF "$r" "$GITIGNORE" || gi_missing+=("$r")
+  done
+  if [[ ${#gi_missing[@]} -eq 0 ]]; then
+    ok ".gitignore 已含全部所需规则，跳过"
+  else
+    printf '\n' >> "$GITIGNORE"
+    printf '%s\n' "${gi_missing[@]}" >> "$GITIGNORE"
+    ok "已向 .gitignore 追加 ${#gi_missing[@]} 条缺失规则：${gi_missing[*]}"
+  fi
 fi
 
 if [[ -f "$WORKSPACE/.aoci/baseline.json" ]]; then
