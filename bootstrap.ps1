@@ -4,7 +4,7 @@
 #  ⚠ 本脚本是 bootstrap.sh（macOS/Linux）的对齐移植，
 #    未在真实 Windows 环境实测；遇到问题请对照 bootstrap.sh 排查。
 #
-#  用法（在本工具包目录内执行，默认作用于其父级工作区）：
+#  用法（克隆进工作区后执行，默认作用于其父级工作区）：
 #    powershell -ExecutionPolicy Bypass -File <工具包路径>\bootstrap.ps1 [选项]
 #
 #  做五件事（与 bootstrap.sh 相同）：
@@ -18,6 +18,10 @@
 #       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引；
 #       生成/补齐工作区 .gitignore（幂等：已有则只追加缺失规则）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
+#
+#  工具包隐藏化：当工具包位于工作区内（无 -Workspace 运行即此情形）且名为
+#  agents-envs 时，结束后自动重命名为 .agents-envs——隐藏不碍眼，仍是 git
+#  仓库，日后 cd <工作区>\.agents-envs; git pull 再重跑本脚本即可更新环境
 #
 #  选项：
 #    -Workspace <路径>   显式指定目标工作区（默认：本工具包目录的父目录）
@@ -328,6 +332,27 @@ if ($needWrite) {
     Ok "已生成 $McpJson（JSON 校验通过）"
 }
 
+# ── 3.5 工具包隐藏化 ──────────────────────────────────────────
+# 工具包位于工作区内（无 -Workspace 运行即此情形）且名为 agents-envs 时，
+# 先重命名为 .agents-envs 再做后续初始化——后续的 .gitignore 规则与 aoci
+# 排除规则都针对新名；目录重命名不影响本脚本继续执行（脚本已加载进内存）
+$ToolkitInWorkspace = ((Split-Path -Parent $ToolkitDir) -ieq $Workspace)
+if ($ToolkitInWorkspace) {
+    $ToolkitBase = Split-Path -Leaf $ToolkitDir
+    if ($ToolkitBase -ieq '.agents-envs') {
+        Info "工具包已位于 $(Join-Path $Workspace '.agents-envs')，无需重命名"
+    } elseif ($ToolkitBase -ieq 'agents-envs') {
+        $HiddenDir = Join-Path $Workspace '.agents-envs'
+        if (Test-Path -LiteralPath $HiddenDir) {
+            Warn "$HiddenDir 已存在，跳过重命名（避免覆盖）"
+        } else {
+            Rename-Item -LiteralPath $ToolkitDir -NewName '.agents-envs'
+            $ToolkitDir = $HiddenDir
+            Ok "工具包已隐藏化为 $ToolkitDir（git pull 可随时更新）"
+        }
+    }
+}
+
 # ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
 Step '4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）'
 
@@ -388,11 +413,11 @@ if ((Test-Path -LiteralPath $AgentsMd) -and
 # 放在 scan 之前写入，保证基线扫描时文件集完整。幂等：已有则只追加缺失规则
 $Gitignore = Join-Path $Workspace '.gitignore'
 $GiRules = @('.DS_Store', 'Thumbs.db', '!aoci.txt', '!aoci.code.txt', '!aoci.meta.txt',
-             '.codegraph/', '.mnemosyne/', '.trae/mcp.json', '.aoci/')
+             '.codegraph/', '.mnemosyne/', '.trae/mcp.json', '.aoci/', '.agents-envs/')
 if (-not (Test-Path -LiteralPath $Gitignore)) {
     $GiFull = @('# OS specific files', '.DS_Store', 'Thumbs.db', '',
                 '!aoci.txt', '!aoci.code.txt', '!aoci.meta.txt', '',
-                '.codegraph/', '.mnemosyne/', '.trae/mcp.json', '.aoci/')
+                '.codegraph/', '.mnemosyne/', '.trae/mcp.json', '.aoci/', '.agents-envs/')
     # 显式 LF，与 .gitattributes eol=lf 保持一致
     [IO.File]::WriteAllText($Gitignore, ($GiFull -join "`n") + "`n")
     Ok '已生成 .gitignore（OS 杂项 + aoci 白名单 + 工具数据目录）'
@@ -408,6 +433,29 @@ if (-not (Test-Path -LiteralPath $Gitignore)) {
         $new = $base + $nl + $nl + ($giMissing -join $nl) + $nl
         [IO.File]::WriteAllText($Gitignore, $new)
         Ok "已向 .gitignore 追加 $($giMissing.Count) 条缺失规则: $($giMissing -join ', ')"
+    }
+}
+
+# 工具包位于工作区内时，向 aoci 声明排除规则（先于首次 scan，保证基线不含
+# 工具包文件——aoci 不读工作区 .gitignore，须走其自有 scope 规则体系）。
+# 规则存于 .aoci\config.json（机器本地，不入库），重复运行幂等跳过
+if ($ToolkitInWorkspace) {
+    $TkRuleId = 'exclude-toolkit'
+    $TkPattern = Split-Path -Leaf $ToolkitDir   # 重命名后的 .agents-envs
+    $ruleLines = @()
+    try { $ruleLines = @(& $AociBin --repo $Workspace scope rule list 2>$null) } catch { }
+    if (@($ruleLines | Where-Object { $_ -match "^$TkRuleId " }).Count -gt 0) {
+        Ok "aoci 排除规则 $TkRuleId 已存在"
+    } else {
+        & $AociBin --repo $Workspace scope rule add $TkRuleId `
+            --action exclude --pattern-kind directory `
+            --pattern $TkPattern `
+            --reason 'AI 环境工具包（自身 git 仓库，机器本地），不属于本工作区业务认知'
+        if ($LASTEXITCODE -eq 0) {
+            Ok "已向 aoci 声明排除规则: $TkPattern/"
+        } else {
+            Warn "aoci 排除规则添加失败（exit $LASTEXITCODE），基线可能包含工具包文件"
+        }
     }
 }
 

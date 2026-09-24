@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────────
 #  bootstrap.sh — 一键搭建 AI 工程环境（macOS / Linux）
 #
-#  用法（在本工具包目录内执行，默认作用于其父级工作区）：
+#  用法（克隆进工作区后执行，默认作用于其父级工作区）：
 #    bash <工具包路径>/bootstrap.sh [选项]
 #
 #  做五件事：
@@ -16,6 +16,10 @@
 #       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引；
 #       生成/补齐工作区 .gitignore（幂等：已有则只追加缺失规则）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
+#
+#  工具包隐藏化：当工具包位于工作区内（无 --workspace 运行即此情形）且名为
+#  agents-envs 时，结束后自动重命名为 .agents-envs——隐藏不碍眼，仍是 git
+#  仓库，日后 cd <工作区>/.agents-envs && git pull 再重跑本脚本即可更新环境
 #
 #  选项：
 #    --workspace <路径>   显式指定目标工作区（默认：本工具包目录的父目录）
@@ -287,6 +291,27 @@ else
 fi
 [[ -n "$NEW_MCP" ]] && rm -f "$NEW_MCP"
 
+# ── 3.5 工具包隐藏化 ──────────────────────────────────────────
+# 工具包位于工作区内（无 --workspace 运行即此情形）且名为 agents-envs 时，
+# 先重命名为 .agents-envs 再做后续初始化——后续的 .gitignore 规则与 aoci
+# 排除规则都针对新名；目录重命名不影响本脚本继续执行（fd 仍有效）
+TOOLKIT_IN_WORKSPACE=false
+if [[ "$(dirname "$TOOLKIT_DIR")" == "$WORKSPACE" ]]; then
+  TOOLKIT_IN_WORKSPACE=true
+  TOOLKIT_BASE="$(basename "$TOOLKIT_DIR")"
+  if [[ "$TOOLKIT_BASE" == ".agents-envs" ]]; then
+    info "工具包已位于 $WORKSPACE/.agents-envs，无需重命名"
+  elif [[ "$TOOLKIT_BASE" == "agents-envs" ]]; then
+    if [[ -e "$WORKSPACE/.agents-envs" ]]; then
+      warn "$WORKSPACE/.agents-envs 已存在，跳过重命名（避免覆盖）"
+    else
+      mv "$TOOLKIT_DIR" "$WORKSPACE/.agents-envs"
+      TOOLKIT_DIR="$WORKSPACE/.agents-envs"
+      ok "工具包已隐藏化为 ${TOOLKIT_DIR}（git pull 可随时更新）"
+    fi
+  fi
+fi
+
 # ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
 step "4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）"
 
@@ -327,7 +352,7 @@ fi
 # 工作区 .gitignore：OS 杂项 + AOCI 正式资产白名单 + 工具数据目录；
 # 放在 scan 之前写入，保证基线扫描时文件集完整。幂等：已有则只追加缺失规则
 GITIGNORE="$WORKSPACE/.gitignore"
-GI_RULES=('.DS_Store' 'Thumbs.db' '!aoci.txt' '!aoci.code.txt' '!aoci.meta.txt' '.codegraph/' '.mnemosyne/' '.trae/mcp.json' '.aoci/')
+GI_RULES=('.DS_Store' 'Thumbs.db' '!aoci.txt' '!aoci.code.txt' '!aoci.meta.txt' '.codegraph/' '.mnemosyne/' '.trae/mcp.json' '.aoci/' '.agents-envs/')
 if [[ ! -f "$GITIGNORE" ]]; then
   printf '%s\n' \
     '# OS specific files' \
@@ -341,7 +366,8 @@ if [[ ! -f "$GITIGNORE" ]]; then
     '.codegraph/' \
     '.mnemosyne/' \
     '.trae/mcp.json' \
-    '.aoci/' > "$GITIGNORE"
+    '.aoci/' \
+    '.agents-envs/' > "$GITIGNORE"
   ok "已生成 .gitignore（OS 杂项 + aoci 白名单 + 工具数据目录）"
 else
   gi_missing=()
@@ -354,6 +380,22 @@ else
     printf '\n' >> "$GITIGNORE"
     printf '%s\n' "${gi_missing[@]}" >> "$GITIGNORE"
     ok "已向 .gitignore 追加 ${#gi_missing[@]} 条缺失规则：${gi_missing[*]}"
+  fi
+fi
+
+# 工具包位于工作区内时，向 aoci 声明排除规则（先于首次 scan，保证基线不含
+# 工具包文件——aoci 不读工作区 .gitignore，须走其自有 scope 规则体系）。
+# 规则存于 .aoci/config.json（机器本地，不入库），重复运行幂等跳过
+if [[ "$TOOLKIT_IN_WORKSPACE" == true ]]; then
+  TK_RULE_ID="exclude-toolkit"
+  if "$AOCI_BIN" --repo "$WORKSPACE" scope rule list 2>/dev/null | grep -q "^${TK_RULE_ID} "; then
+    ok "aoci 排除规则 ${TK_RULE_ID} 已存在"
+  else
+    "$AOCI_BIN" --repo "$WORKSPACE" scope rule add "$TK_RULE_ID" \
+      --action exclude --pattern-kind directory \
+      --pattern "$(basename "$TOOLKIT_DIR")" \
+      --reason "AI 环境工具包（自身 git 仓库，机器本地），不属于本工作区业务认知"
+    ok "已向 aoci 声明排除规则：$(basename "$TOOLKIT_DIR")/"
   fi
 fi
 

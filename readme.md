@@ -1,28 +1,40 @@
 # agents-envs — AI 工程环境一键搭建工具包
 
-把这个工具包克隆到你的工作区（建议放在 `.agents-envs/` 子目录），运行一条命令，即可获得完整的 Trae AI 工程环境：**三个 MCP 服务**（codegraph / mnemosyne / aoci）+ **AOCI 仓库认知索引** + **代码图谱**。
+把这个工具包克隆到你的工作区里（如 `agents-envs/`，跑完脚本会自动改名为 `.agents-envs/` 藏起来），运行一条命令，即可获得完整的 Trae AI 工程环境：**三个 MCP 服务**（codegraph / mnemosyne / aoci）+ **AOCI 仓库认知索引** + **代码图谱**。
 
 ## 快速开始
 
 macOS / Linux：
 
 ```bash
-git clone <本仓库地址> ~/my-project/.agents-envs
-bash ~/my-project/.agents-envs/bootstrap.sh
+cd ~/my-project
+git clone <本仓库地址> agents-envs
+bash agents-envs/bootstrap.sh
 ```
 
 Windows（PowerShell）：
 
 ```powershell
-git clone <本仓库地址> .agents-envs
-powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
+cd C:\my-project
+git clone <本仓库地址> agents-envs
+powershell -ExecutionPolicy Bypass -File agents-envs\bootstrap.ps1
 ```
 
 完成后在 Trae 中重新打开（或 Reload）该工作区，`.trae/mcp.json` 即生效。Agent 会话开始时先调 `aoci_rules` 建立本工程认知契约，再按需 `aoci_overview` 建立全局认知（见 `AGENTS.md` 尾部精简指引与 `AOCI.md`）。
 
-> 脚本默认作用于**工具包目录的父目录**（即你的工作区根）。也可以显式指定：
-> `bootstrap.sh --workspace <路径>` / `bootstrap.ps1 -Workspace <路径>`。
+> 脚本默认作用于**工具包目录的父目录**（即你的工作区根），并把工具包自动隐藏化为 `<工作区>/.agents-envs`——不碍眼，且仍是 git 仓库。也可以显式指定：
+> `bootstrap.sh --workspace <路径>` / `bootstrap.ps1 -Workspace <路径>`（工具包在工作区外时不做重命名）。
 > 重复运行安全：所有步骤幂等，已存在的一律跳过，不会覆盖已有认知与配置。
+
+### 之后想更新环境
+
+工具包留在 `.agents-envs/`，随时拉新版重跑即可：
+
+```bash
+cd ~/my-project/.agents-envs
+git pull
+bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
+```
 
 ## bootstrap 做的五件事
 
@@ -35,6 +47,8 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 4. **AGENTS.md + AOCI 工作区初始化**：先从 [AGENTS.MD.TEMPLATE](AGENTS.MD.TEMPLATE) 部署工作区级 `AGENTS.md`（缺失时），再 `aoci init`（缺 `aoci.txt` 骨架时）+ `aoci scan`（缺基线时）。init 追加的 aoci 运行时合同区块（百行级）自动收拢到独立 `AOCI.md`，主 `AGENTS.md` 仅留精简指引（会话合同由 `aoci_rules` 实时签发，静态文档本不作合同）；并生成/补齐工作区 `.gitignore`（OS 杂项 + AOCI 正式资产白名单 + 工具数据目录，已有则只追加缺失规则）；
 5. **codegraph 索引**：工作区根必建（MCP server 的 cwd 在根，无索引进静默态），另为各含 `.git` 的子仓库建图（排除 `node_modules` 与工具包自身）。
 
+> 第 3 与第 4 步之间还有一步**工具包隐藏化**：工具包位于工作区内且名为 `agents-envs` 时自动改名为 `.agents-envs`，同时向 `.gitignore` 加忽略规则、向 aoci 声明 `exclude-toolkit` 排除规则（aoci 不读工作区 .gitignore，基线排除须走其自有 scope 规则）——保证工具包文件既不进你的 git 提交，也不进 AOCI 认知基线。
+
 ## 搭建产物（出现在你的工作区）
 
 | 路径 | 说明 |
@@ -43,7 +57,8 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 | `aoci.txt` + `.aoci/` | AOCI 仓库认知索引与字节级基线（基线跨平台要求 LF，见 `.gitattributes`） |
 | `AGENTS.md` | 工作区级 Agent 约束：模板部署的工作流与 MCP 工具约束 + 尾部 AOCI 精简指引（已存在则一律不覆盖） |
 | `AOCI.md` | aoci init 追加的运行时合同区块存档（收拢自 AGENTS.md，可提交版本化；会话合同以 `aoci_rules` 实时签发为准） |
-| `.gitignore` | OS 杂项（`.DS_Store`/`Thumbs.db`）+ AOCI 正式资产白名单（`aoci.txt` 等 3 个）+ 工具数据目录（`.codegraph/`、`.mnemosyne/`、`.trae/mcp.json`、`.aoci/`）忽略 |
+| `.gitignore` | OS 杂项（`.DS_Store`/`Thumbs.db`）+ AOCI 正式资产白名单（`aoci.txt` 等 3 个）+ 工具数据目录（`.codegraph/`、`.mnemosyne/`、`.trae/mcp.json`、`.aoci/`、`.agents-envs/`）忽略 |
+| `.agents-envs/` | 工具包自身（无参运行时自动由 `agents-envs/` 重命名而来；自身是 git 仓库，`git pull` 随时更新环境） |
 | `.codegraph/` | 代码图谱数据库（自带 gitignore，建议整体提交或忽略均可） |
 | `.mnemosyne/` | 记忆库数据目录（mnemosyne 服务首次运行时创建，bank 名 = 工作区目录名） |
 
@@ -72,7 +87,8 @@ powershell -ExecutionPolicy Bypass -File .agents-envs\bootstrap.ps1
 ## 常见问题
 
 - **pypi.org 连不上**：脚本内置阿里云 / 腾讯镜像回退链，通常无需干预；也可显式 `PIP_INDEX_URL=<你的镜像>` 后重跑。
-- **重跑会怎样**：所有步骤幂等——工具已装则跳过、mcp.json 内容一致则不写、`AGENTS.md` 已存在则不覆盖、aoci 区块已收拢则不再处理、`.gitignore` 只追加缺失规则、`aoci.txt`/基线已存在则跳过 init/scan、`.codegraph` 已存在则跳过该仓库。
+- **重跑会怎样**：所有步骤幂等——工具已装则跳过、mcp.json 内容一致则不写、工具包已叫 `.agents-envs` 则不再重命名、`AGENTS.md` 已存在则不覆盖、aoci 区块已收拢则不再处理、`.gitignore` 只追加缺失规则、aoci 排除规则已存在则跳过、`aoci.txt`/基线已存在则跳过 init/scan、`.codegraph` 已存在则跳过该仓库。
+- **怎么更新到新版工具包**：`cd <工作区>/.agents-envs && git pull && bash bootstrap.sh`（重跑幂等，只增量生效）。
 - **重建 AOCI 基线**：`aoci --repo <工作区> scan --force`。
 - **PATH 警告**：`~/bin`、`~/.local/bin` 不在 PATH 只影响终端直呼 `aoci` / `mnemosyne`，MCP 配置写的是绝对路径，不受影响。
 - **已有 `.trae/mcp.json`**：覆盖前自动备份为 `mcp.json.bak.<时间戳>`。
