@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "codegraph": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@colbymchenry/codegraph",
+        "serve",
+        "--mcp"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CODEGRAPH_MCP_TOOLS": "explore,search,callers,callees,impact,node,files,status"
+      }
+    },
+    "mnemosyne": {
+      "command": "__MNEMOSYNE_BIN__",
+      "args": ["mcp", "--bank", "${workspaceFolderBasename}"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "MNEMOSYNE_DATA_DIR": "${workspaceFolder}/.mnemosyne/data"
+      }
+    },
+    "aoci": {
+      "command": "__AOCI_BIN__",
+      "args": ["--repo", "${workspaceFolder}", "mcp"]
+    }
+  }
+}
