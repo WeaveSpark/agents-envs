@@ -356,9 +356,11 @@ if ($ToolkitInWorkspace) {
 # ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
 Step '4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）'
 
+$AgentsFreshlyDeployed = $false
 if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'AGENTS.md'))) {
     Copy-Item -LiteralPath (Join-Path $ToolkitDir 'AGENTS.MD.TEMPLATE') `
         -Destination (Join-Path $Workspace 'AGENTS.md')
+    $AgentsFreshlyDeployed = $true
     Ok '已从模板部署 AGENTS.md（工作流 + MCP 工具约束）'
 } else {
     Info 'AGENTS.md 已存在，不覆盖'
@@ -367,7 +369,15 @@ if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'AGENTS.md'))) {
 if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'aoci.txt'))) {
     & $AociBin --repo $Workspace init --locale zh-CN
     if ($LASTEXITCODE -ne 0) { Err 'aoci init 失败'; exit 1 }
-    Ok 'aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份）'
+    Ok 'aoci init 完成（向 AGENTS.md 追加 aoci 区块）'
+    # aoci init 改动已有 AGENTS.md 前会按安全策略落一份备份；若 AGENTS.md 是本次
+    # 刚从模板部署的（备份与模板逐字节相同、不含任何用户内容），该备份纯属目录噪音，
+    # 清理掉；若是用户既有文件（本次未部署），备份必须保留
+    if ($AgentsFreshlyDeployed) {
+        Get-ChildItem -LiteralPath $Workspace -Filter 'AGENTS.md.backup.*' -File `
+            -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        Info '已清理 aoci init 对模板文件产生的冗余备份'
+    }
 } else {
     Ok 'aoci.txt 已存在，跳过 init（不覆盖既有正式认知）'
 }

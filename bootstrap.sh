@@ -315,8 +315,10 @@ fi
 # ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
 step "4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）"
 
+AGENTS_FRESHLY_DEPLOYED=false
 if [[ ! -f "$WORKSPACE/AGENTS.md" ]]; then
   cp "$TOOLKIT_DIR/AGENTS.MD.TEMPLATE" "$WORKSPACE/AGENTS.md"
+  AGENTS_FRESHLY_DEPLOYED=true
   ok "已从模板部署 AGENTS.md（工作流 + MCP 工具约束）"
 else
   info "AGENTS.md 已存在，不覆盖"
@@ -324,7 +326,14 @@ fi
 
 if [[ ! -f "$WORKSPACE/aoci.txt" ]]; then
   "$AOCI_BIN" --repo "$WORKSPACE" init --locale zh-CN
-  ok "aoci init 完成（向 AGENTS.md 追加 aoci 区块并自动备份）"
+  ok "aoci init 完成（向 AGENTS.md 追加 aoci 区块）"
+  # aoci init 改动已有 AGENTS.md 前会按安全策略落一份备份；若 AGENTS.md 是本次
+  # 刚从模板部署的（备份与模板逐字节相同、不含任何用户内容），该备份纯属目录噪音，
+  # 清理掉；若是用户既有文件（本次未部署），备份必须保留
+  if [[ "$AGENTS_FRESHLY_DEPLOYED" == true ]]; then
+    rm -f "$WORKSPACE"/AGENTS.md.backup.*
+    info "已清理 aoci init 对模板文件产生的冗余备份"
+  fi
 else
   ok "aoci.txt 已存在，跳过 init（不覆盖既有正式认知）"
 fi
