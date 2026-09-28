@@ -36,6 +36,10 @@ git pull
 bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
 ```
 
+> `.agents-envs/` 不会自动更新，务必先 `git pull` 成功再重跑，否则跑的还是旧版本。
+> 若 `git pull` 报 `local changes would be overwritten`，通常是文件权限位（mode）差异所致：
+> `git checkout -- .` 丢弃后重试即可（工具包不应有本地改动）。
+
 ## bootstrap 做的五件事
 
 1. **依赖预检**：git / curl / node（建议 ≥18）/ python3 ≥3.10 / pipx（缺失时自动经 pip 镜像安装）；
