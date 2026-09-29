@@ -30,7 +30,7 @@
 #    -Help               显示本帮助
 #
 #  环境变量：
-#    AOCI_VERSION         aoci 发布标签（默认 v0.1.0-rc14；rc 为预发布，
+#    AOCI_VERSION         aoci 发布标签（默认 v0.1.0-rc17；rc 为预发布，
 #                         GitHub latest API 不含预发布，故显式固定）
 #    MNEMOSYNE_EXTRAS     pip extras，默认 all；Windows 上若 llama-cpp
 #                         依赖装不上，可改为 "mcp" 瘦身
@@ -71,7 +71,7 @@ if ($Help) {
 }
 
 $ToolkitDir     = Split-Path -Parent $PSCommandPath
-$AociVersion    = if ($env:AOCI_VERSION)     { $env:AOCI_VERSION }     else { 'v0.1.0-rc14' }
+$AociVersion    = if ($env:AOCI_VERSION)     { $env:AOCI_VERSION }     else { 'v0.1.0-rc17' }
 $MnemosyneExtras= if ($env:MNEMOSYNE_EXTRAS) { $env:MNEMOSYNE_EXTRAS } else { 'all' }
 $GitHubDl       = if ($env:GITHUB_DL)        { $env:GITHUB_DL }        else { 'https://github.com' }
 $AociRepo = 'aoci-spec/aoci-code'

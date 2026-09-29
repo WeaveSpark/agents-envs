@@ -84,7 +84,7 @@ bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `AOCI_VERSION` | `v0.1.0-rc14` | aoci 发布标签。rc 为预发布，GitHub latest API 不含预发布，故显式固定 |
+| `AOCI_VERSION` | `v0.1.0-rc17` | aoci 发布标签。rc 为预发布，GitHub latest API 不含预发布，故显式固定 |
 | `MNEMOSYNE_EXTRAS` | `all` | pip extras；Windows 上若 `llama-cpp` 依赖装不上可设为 `mcp` 瘦身 |
 | `PIP_INDEX_URL` | 未设 | 自定义 pip/pipx 索引源；未设置时按 [用户值 →] 阿里云 → 腾讯 → 默认 PyPI 顺序回退 |
 | `CODEGRAPH_SKIP_WARMUP` | 未设 | 设为 `1` 跳过 codegraph npm 缓存预热 |
