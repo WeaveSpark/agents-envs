@@ -12,9 +12,10 @@
 #       - mnemosyne  pipx 安装 PyPI 包 mnemosyne-memory[EXTRAS]
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>/.trae/mcp.json（解析本机二进制绝对路径）
-#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init + scan（缺基线时）；
-#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引；
-#       生成/补齐工作区 .gitignore（幂等：已有则只追加缺失规则）
+#    4. 部署 AGENTS.md 模板 / .vscode/settings.json（均缺失时部署）+ AOCI
+#       初始化：init + scan（缺基线时）；init 追加的 aoci 区块收拢到独立
+#       AOCI.md，主 AGENTS.md 仅留精简指引；生成/补齐工作区 .gitignore
+#       （幂等：已有则只追加缺失规则）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  工具包隐藏化：当工具包位于工作区内（无 --workspace 运行即此情形）且名为
@@ -312,8 +313,8 @@ if [[ "$(dirname "$TOOLKIT_DIR")" == "$WORKSPACE" ]]; then
   fi
 fi
 
-# ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
-step "4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）"
+# ── 4. AGENTS.md / VS Code 配置 + AOCI 工作区初始化 ──────────
+step "4/5 AGENTS.md 模板 + VS Code 配置 + AOCI 初始化（init + scan）"
 
 AGENTS_FRESHLY_DEPLOYED=false
 if [[ ! -f "$WORKSPACE/AGENTS.md" ]]; then
@@ -322,6 +323,17 @@ if [[ ! -f "$WORKSPACE/AGENTS.md" ]]; then
   ok "已从模板部署 AGENTS.md（工作流 + MCP 工具约束）"
 else
   info "AGENTS.md 已存在，不覆盖"
+fi
+
+# VS Code 工作区设置：资源管理器隐藏 AI 环境产物（.agents-envs/、.aoci/ 等），
+# 让工作区看起来干净。缺失时从模板部署；已有则不覆盖（尊重团队既有约定）
+VSCODE_SETTINGS="$WORKSPACE/.vscode/settings.json"
+if [[ ! -f "$VSCODE_SETTINGS" ]]; then
+  mkdir -p "$WORKSPACE/.vscode"
+  cp "$TOOLKIT_DIR/settings_config.json" "$VSCODE_SETTINGS"
+  ok "已部署 .vscode/settings.json（资源管理器隐藏 AI 环境产物）"
+else
+  info ".vscode/settings.json 已存在，不覆盖"
 fi
 
 if [[ ! -f "$WORKSPACE/aoci.txt" ]]; then
@@ -427,6 +439,7 @@ echo "  MCP 服务   : codegraph / mnemosyne / aoci → $MCP_JSON"
 echo "  记忆库     : $WORKSPACE/.mnemosyne/data（bank=$(basename "$WORKSPACE")）"
 echo "  认知索引   : $WORKSPACE/aoci.txt (+ .aoci/)"
 echo "  代码图谱   : $WORKSPACE/.codegraph/ 及各子仓库"
+echo "  编辑器配置 : $WORKSPACE/.vscode/settings.json（隐藏 AI 环境产物）"
 echo ""
 echo "后续步骤:"
 echo "  1. 在 Trae 中重新打开/Reload 该工作区，使 .trae/mcp.json 生效"

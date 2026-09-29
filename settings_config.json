@@ -1,0 +1,15 @@
+{
+  "files.exclude": {
+    ".agents-envs": true,
+    ".aoci": true,
+    ".codegraph": true,
+    ".mnemosyne": true,
+    ".idea": true,
+    "aoci.code.txt": true,
+    "aoci.meta.txt": true,
+    "aoci.txt": true
+
+  },
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "automatic"
+}

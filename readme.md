@@ -48,7 +48,7 @@ bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
    - `mnemosyne`：pipx 安装 PyPI 包 `mnemosyne-memory[all]`（pypi.org 不可达时自动回退阿里云/腾讯镜像）；
    - `codegraph`：npm 包 `@colbymchenry/codegraph`，无需预装，npx 按需拉起（脚本仅预热缓存）；
 3. **生成 `<工作区>/.trae/mcp.json`**：读取 [trae_mcp_config.json](trae_mcp_config.json) 模板，把 `__MNEMOSYNE_BIN__` / `__AOCI_BIN__` 占位符替换为本机二进制绝对路径（已有 mcp.json 时先备份为 `mcp.json.bak.<时间戳>`）；
-4. **AGENTS.md + AOCI 工作区初始化**：先从 [AGENTS.MD.TEMPLATE](AGENTS.MD.TEMPLATE) 部署工作区级 `AGENTS.md`（缺失时），再 `aoci init`（缺 `aoci.txt` 骨架时）+ `aoci scan`（缺基线时）。init 追加的 aoci 运行时合同区块（百行级）自动收拢到独立 `AOCI.md`，主 `AGENTS.md` 仅留精简指引（会话合同由 `aoci_rules` 实时签发，静态文档本不作合同）；并生成/补齐工作区 `.gitignore`（OS 杂项 + AOCI 正式资产白名单 + 工具数据目录，已有则只追加缺失规则）；
+4. **AGENTS.md + VS Code 配置 + AOCI 工作区初始化**：先从 [AGENTS.MD.TEMPLATE](AGENTS.MD.TEMPLATE) 部署工作区级 `AGENTS.md`（缺失时），部署 `.vscode/settings.json`（缺失时；VS Code 资源管理器隐藏 `.agents-envs/`、`.aoci/` 等 AI 环境产物，让工作区看起来干净），再 `aoci init`（缺 `aoci.txt` 骨架时）+ `aoci scan`（缺基线时）。init 追加的 aoci 运行时合同区块（百行级）自动收拢到独立 `AOCI.md`，主 `AGENTS.md` 仅留精简指引（会话合同由 `aoci_rules` 实时签发，静态文档本不作合同）；并生成/补齐工作区 `.gitignore`（OS 杂项 + AOCI 正式资产白名单 + 工具数据目录，已有则只追加缺失规则）；
 5. **codegraph 索引**：工作区根必建（MCP server 的 cwd 在根，无索引进静默态），另为各含 `.git` 的子仓库建图（排除 `node_modules` 与工具包自身）。
 
 > 第 3 与第 4 步之间还有一步**工具包隐藏化**：工具包位于工作区内且名为 `agents-envs` 时自动改名为 `.agents-envs`，同时向 `.gitignore` 加忽略规则、向 aoci 声明 `exclude-toolkit` 排除规则（aoci 不读工作区 .gitignore，基线排除须走其自有 scope 规则）——保证工具包文件既不进你的 git 提交，也不进 AOCI 认知基线。
@@ -58,6 +58,7 @@ bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
 | 路径 | 说明 |
 | --- | --- |
 | `.trae/mcp.json` | 三个 MCP 服务的注册配置（IDE 变量 `${workspaceFolder}` 等由 Trae 运行时解析） |
+| `.vscode/settings.json` | VS Code 工作区设置（缺失时从 [settings_config.json](settings_config.json) 部署，已存在则不覆盖）：资源管理器隐藏 `.agents-envs/`、`.aoci/`、`aoci.txt` 等 AI 环境产物 |
 | `aoci.txt` + `.aoci/` | AOCI 仓库认知索引与字节级基线（基线跨平台要求 LF，见 `.gitattributes`） |
 | `AGENTS.md` | 工作区级 Agent 约束：模板部署的工作流与 MCP 工具约束 + 尾部 AOCI 精简指引（已存在则一律不覆盖） |
 | `AOCI.md` | aoci init 追加的运行时合同区块存档（收拢自 AGENTS.md，可提交版本化；会话合同以 `aoci_rules` 实时签发为准） |
@@ -73,6 +74,7 @@ bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
 | `bootstrap.sh` | 一键搭建主入口（macOS / Linux） |
 | `bootstrap.ps1` | 一键搭建主入口（Windows，与 sh 版逻辑对齐；**未在真实 Windows 实测**） |
 | `trae_mcp_config.json` | mcp.json 模板（占位符版本，勿直接当配置用） |
+| `settings_config.json` | VS Code 工作区设置模板（部署为 `<工作区>/.vscode/settings.json`） |
 | `aoci.sh` | 单独执行 AOCI init / scan + aoci 区块收拢（bootstrap 已内置，供手动补跑） |
 | `code-graph.sh` | 单独执行 codegraph 索引（同上） |
 | `AGENTS.MD.TEMPLATE` | 工作区 AGENTS.md 通用模板（工作流分级 + 三类 MCP 工具约束；bootstrap 在工作区缺失时部署，AOCI init 再向其追加 aoci 区块） |
@@ -91,7 +93,7 @@ bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
 ## 常见问题
 
 - **pypi.org 连不上**：脚本内置阿里云 / 腾讯镜像回退链，通常无需干预；也可显式 `PIP_INDEX_URL=<你的镜像>` 后重跑。
-- **重跑会怎样**：所有步骤幂等——工具已装则跳过、mcp.json 内容一致则不写、工具包已叫 `.agents-envs` 则不再重命名、`AGENTS.md` 已存在则不覆盖、aoci 区块已收拢则不再处理、`.gitignore` 只追加缺失规则、aoci 排除规则已存在则跳过、`aoci.txt`/基线已存在则跳过 init/scan、`.codegraph` 已存在则跳过该仓库。
+- **重跑会怎样**：所有步骤幂等——工具已装则跳过、mcp.json 内容一致则不写、工具包已叫 `.agents-envs` 则不再重命名、`AGENTS.md` 已存在则不覆盖、`.vscode/settings.json` 已存在则不覆盖、aoci 区块已收拢则不再处理、`.gitignore` 只追加缺失规则、aoci 排除规则已存在则跳过、`aoci.txt`/基线已存在则跳过 init/scan、`.codegraph` 已存在则跳过该仓库。
 - **怎么更新到新版工具包**：`cd <工作区>/.agents-envs && git pull && bash bootstrap.sh`（重跑幂等，只增量生效）。
 - **重建 AOCI 基线**：`aoci --repo <工作区> scan --force`。
 - **PATH 警告**：`~/bin`、`~/.local/bin` 不在 PATH 只影响终端直呼 `aoci` / `mnemosyne`，MCP 配置写的是绝对路径，不受影响。

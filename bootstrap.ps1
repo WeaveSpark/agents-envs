@@ -14,9 +14,10 @@
 #       - mnemosyne  pipx 安装 PyPI 包 mnemosyne-memory[EXTRAS]
 #       - codegraph  无需安装，npx 按需拉起（此处仅预热 npm 缓存）
 #    3. 由模板生成 <工作区>\.trae\mcp.json（解析本机二进制绝对路径）
-#    4. 部署 AGENTS.md 模板（缺失时）+ AOCI 初始化：init + scan（缺基线时）；
-#       init 追加的 aoci 区块收拢到独立 AOCI.md，主 AGENTS.md 仅留精简指引；
-#       生成/补齐工作区 .gitignore（幂等：已有则只追加缺失规则）
+#    4. 部署 AGENTS.md 模板 / .vscode/settings.json（均缺失时部署）+ AOCI
+#       初始化：init + scan（缺基线时）；init 追加的 aoci 区块收拢到独立
+#       AOCI.md，主 AGENTS.md 仅留精简指引；生成/补齐工作区 .gitignore
+#       （幂等：已有则只追加缺失规则）
 #    5. codegraph 索引：工作区根 + 各含 .git 的子仓库
 #
 #  工具包隐藏化：当工具包位于工作区内（无 -Workspace 运行即此情形）且名为
@@ -353,8 +354,8 @@ if ($ToolkitInWorkspace) {
     }
 }
 
-# ── 4. AGENTS.md + AOCI 工作区初始化 ──────────────────────────
-Step '4/5 AGENTS.md 模板 + AOCI 初始化（init + scan）'
+# ── 4. AGENTS.md / VS Code 配置 + AOCI 工作区初始化 ──────────
+Step '4/5 AGENTS.md 模板 + VS Code 配置 + AOCI 初始化（init + scan）'
 
 $AgentsFreshlyDeployed = $false
 if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'AGENTS.md'))) {
@@ -364,6 +365,18 @@ if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'AGENTS.md'))) {
     Ok '已从模板部署 AGENTS.md（工作流 + MCP 工具约束）'
 } else {
     Info 'AGENTS.md 已存在，不覆盖'
+}
+
+# VS Code 工作区设置：资源管理器隐藏 AI 环境产物（.agents-envs/、.aoci/ 等），
+# 让工作区看起来干净。缺失时从模板部署；已有则不覆盖（尊重团队既有约定）
+$VscodeSettings = Join-Path $Workspace '.vscode\settings.json'
+if (-not (Test-Path -LiteralPath $VscodeSettings)) {
+    New-Item -ItemType Directory -Path (Join-Path $Workspace '.vscode') -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $ToolkitDir 'settings_config.json') `
+        -Destination $VscodeSettings
+    Ok '已部署 .vscode/settings.json（资源管理器隐藏 AI 环境产物）'
+} else {
+    Info '.vscode/settings.json 已存在，不覆盖'
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $Workspace 'aoci.txt'))) {
@@ -518,6 +531,7 @@ Write-Host "  MCP 服务   : codegraph / mnemosyne / aoci → $McpJson"
 Write-Host "  记忆库     : $(Join-Path $Workspace '.mnemosyne\data')（bank=$(Split-Path -Leaf $Workspace)）"
 Write-Host "  认知索引   : $(Join-Path $Workspace 'aoci.txt') (+ .aoci\)"
 Write-Host "  代码图谱   : $(Join-Path $Workspace '.codegraph\') 及各子仓库"
+Write-Host "  编辑器配置 : $VscodeSettings（隐藏 AI 环境产物）"
 Write-Host ''
 Write-Host '后续步骤:'
 Write-Host '  1. 在 Trae 中重新打开/Reload 该工作区，使 .trae\mcp.json 生效'
