@@ -58,7 +58,7 @@ bash bootstrap.sh          # PowerShell 用 bootstrap.ps1
 | 路径 | 说明 |
 | --- | --- |
 | `.trae/mcp.json` | 三个 MCP 服务的注册配置（IDE 变量 `${workspaceFolder}` 等由 Trae 运行时解析） |
-| `.vscode/settings.json` | VS Code 工作区设置（缺失时从 [settings_config.json](settings_config.json) 部署，已存在则不覆盖）：资源管理器隐藏 `.agents-envs/`、`.aoci/`、`aoci.txt` 等 AI 环境产物 |
+| `.vscode/settings.json` | VS Code 工作区设置（缺失时从 [settings_config.json](settings_config.json) 部署，已存在则不覆盖）：资源管理器隐藏 `.agents-envs/`、`.aoci/`、`.codegraph/` 等数据目录。**`aoci.txt` 等正式认知资产不隐藏**——Agent 的文件搜索默认尊重 `files.exclude`，藏起来会让 Agent 误判 AOCI 索引不存在、绕开 `aoci_rules` 流程 |
 | `aoci.txt` + `.aoci/` | AOCI 仓库认知索引与字节级基线（基线跨平台要求 LF，见 `.gitattributes`） |
 | `AGENTS.md` | 工作区级 Agent 约束：模板部署的工作流与 MCP 工具约束 + 尾部 AOCI 精简指引（已存在则一律不覆盖） |
 | `AOCI.md` | aoci init 追加的运行时合同区块存档（收拢自 AGENTS.md，可提交版本化；会话合同以 `aoci_rules` 实时签发为准） |
